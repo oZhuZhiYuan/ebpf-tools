@@ -41,3 +41,20 @@ bpftool gen skeleton xdp-proxy.bpf.o > xdp-proxy.skel.h
 clang -g -O2 -Wall -I. -c xdp-proxy.c -o xdp-proxy.o
 clang -Wall -O2 -g xdp-proxy.o -static -lbpf -lelf -lz -o xdp-proxy
 
+
+# 拷贝到docker 中执行
+docker cp xdp-proxy lb:/
+docker exec -it lb /xdp-proxy
+
+# wrk 测试 （??? 延时竟然更高了）
+
+root@zhuzhiyuan-virtual-machine:~# wrk -c100 http://172.17.0.5 
+Running 10s test @ http://172.17.0.5
+  2 threads and 100 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   274.53ms  383.31ms   1.73s    86.78%
+    Req/Sec   138.74    102.36   700.00     74.60%
+  2853 requests in 10.08s, 507.08KB read
+  Socket errors: connect 0, read 0, write 0, timeout 42
+Requests/sec:    282.93
+Transfer/sec:     50.29KB

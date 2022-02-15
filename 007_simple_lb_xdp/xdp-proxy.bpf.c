@@ -14,7 +14,8 @@
     endpoint2    => 172.17.0.3 (Hex 0x30011ac) => 02:42:ac:11:00:03
 */
 
-#define CLIENT_IP 0x40011ac
+// #define CLIENT_IP 0x40011ac
+#define CLIENT_IP 0x10011ac
 #define LOADBALANCER_IP 0x50011ac
 #define ENDPOINT1_IP 0x20011ac
 #define ENDPOINT2_IP 0x30011ac
@@ -92,7 +93,13 @@ int xdp_proxy(struct xdp_md *ctx)
     else
     {
         iph->daddr = CLIENT_IP;
-        eth->h_dest[5] = CLIENT_MAC_SUFFIX;
+        // eth->h_dest[5] = CLIENT_MAC_SUFFIX;
+        eth->h_dest[0] = 0x02; 
+        eth->h_dest[1] = 0x42; 
+        eth->h_dest[2] = 0xe0; 
+        eth->h_dest[3] = 0x1f; 
+        eth->h_dest[4] = 0x74; 
+        eth->h_dest[5] = 0x19; 
     }
 
     /* packet source is always LB itself */
