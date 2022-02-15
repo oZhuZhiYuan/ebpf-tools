@@ -33,3 +33,8 @@ Transfer/sec:    424.10KB
 
 ##### (2) 使用airpline 加载 xdp程序
 
+
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I. -c xdp-proxy.bpf.c -o xdp-proxy.bpf.o
+bpftool gen skeleton xdp-proxy.bpf.o > xdp-proxy.skel.h
+
+
