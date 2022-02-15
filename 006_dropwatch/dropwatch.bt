@@ -1,0 +1,25 @@
+#!/usr/bin/bpftrace
+
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+#include <linux/socket.h>
+#include <linux/netdevice.h>
+
+kprobe:kfree_skb/comm=="nc"/
+
+{
+    // 1. 第一个参数时 strcut sk_buff
+    $skb = (struct sk_buff *)arg0;
+
+    // 2. 从网络头中获取源和目的ip
+    $iph = (struct iphdr *)($skb->head + $skb->network_header);
+    $sip = ntop(AF_INET, $iph->saddr);
+    $dip = ntop(AF_INET, $iph->daddr);
+
+    // 3. 只处理TCP协议
+    if ($iph->protocol == IPPROTO_TCP)
+    {
+        printf("SKB dropped: %s -> %s, comm: %s, pid: %d,  kstack: %s\n", $sip, $dip, comm, pid, kstack);
+    }
+
+}

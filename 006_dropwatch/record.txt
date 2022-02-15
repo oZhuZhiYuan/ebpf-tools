@@ -1,0 +1,68 @@
+
+
+### (1)
+root@zhuzhiyuan-virtual-machine:~# nc -w1 -z -v 39.106.233.176 80
+nc: connect to 39.106.233.176 port 80 (tcp) timed out: Operation now in progress
+root@zhuzhiyuan-virtual-machine:~# nc -w1 -z -v 39.106.233.176 80
+nc: connect to 39.106.233.176 port 80 (tcp) timed out: Operation now in progress
+
+
+
+### (2)
+root@zhuzhiyuan-virtual-machine:~/ebpf-tools/006_dropwatch# ls
+dropwatch.bt
+root@zhuzhiyuan-virtual-machine:~/ebpf-tools/006_dropwatch# bpftrace dropwatch.bt 
+Attaching 1 probe...
+SKB dropped: 172.100.0.128 -> 39.106.233.176, comm: nc, pid: 5744,  kstack: 
+        kfree_skb+1
+        __ip_local_out+219
+        ip_local_out+29
+        __ip_queue_xmit+367
+        ip_queue_xmit+21
+        __tcp_transmit_skb+2237
+        tcp_connect+1009
+        tcp_v4_connect+951
+        __inet_stream_connect+209
+        inet_stream_connect+59
+        __sys_connect_file+95
+        __sys_connect+162
+        __x64_sys_connect+24
+        do_syscall_64+97
+        entry_SYSCALL_64_after_hwframe+68
+
+SKB dropped: 172.100.0.128 -> 39.106.233.176, comm: nc, pid: 5745,  kstack: 
+        kfree_skb+1
+        __ip_local_out+219
+        ip_local_out+29
+        __ip_queue_xmit+367
+        ip_queue_xmit+21
+        __tcp_transmit_skb+2237
+        tcp_connect+1009
+        tcp_v4_connect+951
+        __inet_stream_connect+209
+        inet_stream_connect+59
+        __sys_connect_file+95
+        __sys_connect+162
+        __x64_sys_connect+24
+        do_syscall_64+97
+        entry_SYSCALL_64_after_hwframe+68
+
+### (3)
+# 查看函数名+偏移量对应的代码
+root@zhuzhiyuan-virtual-machine:~# /root/ebpf-tools/tools/faddr2line /usr/lib/debug/boot/vmlinux-5.13.0-22-generic __ip_local_out+219
+
+__ip_local_out+219/0x150:
+nf_hook at include/linux/netfilter.h:256
+(inlined by) __ip_local_out at net/ipv4/ip_output.c:115
+
+
+# 115 行
+return nf_hook(NFPROTO_IPV4, NF_INET_LOCAL_OUT,
+		       net, sk, skb, NULL, skb_dst(skb)->dev,
+		       dst_output);
+
+### (4)
+root@zhuzhiyuan-virtual-machine:~/ebpf-tools/006_dropwatch# iptables -vnL OUTPUT
+Chain OUTPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination         
+   13   780 DROP       tcp  --  *      *       0.0.0.0/0            39.106.233.176       tcp dpt:80
