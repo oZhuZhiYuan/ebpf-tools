@@ -92,6 +92,10 @@ int xdp_proxy(struct xdp_md *ctx)
     }
     else
     {
+        /*如果是回包方向, 源地址修改为client的ip和mac, 
+         这里面使用的是docker0接口的ip和mac 
+         
+         */
         iph->daddr = CLIENT_IP;
         // eth->h_dest[5] = CLIENT_MAC_SUFFIX;
         eth->h_dest[0] = 0x02; 
