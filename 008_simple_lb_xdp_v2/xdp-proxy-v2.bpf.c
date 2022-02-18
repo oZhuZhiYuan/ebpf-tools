@@ -7,7 +7,7 @@
 #include <bpf/bpf_endian.h>
 #include "xdp-proxy-v2.h"
 
-/*define a hashmap for userspace to update service endpoints*/
+/* define a hashmap for userspace to update service endpoints */
 
 struct
 {
@@ -42,34 +42,73 @@ static __always_inline __u16 ipv4_csum(struct iphdr *iph)
 SEC("xdp")
 int xdp_proxy(struct xdp_md *ctx)
 {
-    /*数据段头指针*/
+    /* 数据段头指针 */
     void *data = (void *)(long)ctx->data;
-    /*数据段尾指针*/
+    /* 数据段尾指针 */
     void *data_end = (void *)(long)ctx->data_end;
-    /*定义以太网帧头指针，指向数据段头*/
+    /* 定义以太网帧头指针，指向数据段头 */
     struct ethhdr *eth = data;
 
     /* abort on illegal packets*/
     if (data + sizeof(struct ethhdr) > data_end)
     {
-        /*数据包丢弃并记录错误*/
+        /* 数据包丢弃并记录错误 */
         return XDP_ABORTED;
     }
-    /* do nothing for ipv4 packets*/
+    /* do nothing for non-ipv4 packets*/
     if (eth->h_proto != bpf_htons(ETH_P_IP))
     {
         return XDP_PASS;
     }
 
-    /*取ip头*/
+    /* 取ip头 */
     struct iphdr *iph = data + sizeof(struct ethhdr);
     if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
     {
         return XDP_ABORTED;
     }
-    /*如果不是tcp报文,pass*/
+    /* 如果不是tcp报文,pass */
     if (iph->protocol != IPPROTO_TCP)
     {
         return XDP_PASS;
     }
+
+    __be32 svc1_key = SVC1_KEY;
+    struct endpoints *ep = bpf_map_lookup_elem(&services, &svc1_key);
+    if (!ep)
+    {
+        return XDP_PASS;
+    }
+    // bpf_printk("Client IP: %ld", ep->client);
+    // bpf_printk("Endpoint IPs: %ld, %ld", ep->ep1, ep->ep2);
+    // bpf_printk("New TCP packet %ld => %ld\n", iph->saddr, iph->daddr);
+    if (iph->saddr == ep->client)
+    {
+        iph->daddr = ep->ep1;
+        /* 使用内置函数拷贝字符数组 */
+        memcpy(eth->h_dest, ep->ep1_mac, ETH_ALEN);
+        /* simulate random selection of two endpoints */
+        if ((bpf_ktime_get_ns() & 0x1) == 0x1)
+        {
+            iph->daddr = ep->ep2;
+            memcpy(eth->h_dest, ep->ep2_mac, ETH_ALEN);
+        }
+    }
+    else
+    {
+        iph->daddr = ep->client;
+        memcpy(eth->h_dest, ep->client_mac, ETH_ALEN);
+    }
+
+    /* packet source is always LB itself */
+    iph->saddr = ep->vip;
+    memcpy(eth->h_source, ep->vip_mac, ETH_ALEN);
+
+    /* recalculate IP checksum */
+    iph->check = ipv4_csum(iph);
+
+    /* send packet back to network stack */
+    return XDP_TX;
 }
+
+char _license[] SEC("license") = "GPL";
