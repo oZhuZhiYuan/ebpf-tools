@@ -1,0 +1,13 @@
+# 编译字节码，生成脚手架文件 
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -I/usr/include/x86_64-linux-gnu -I. -c xdp-proxy-v2.bpf.c -o xdp-proxy-v2.bpf.o
+bpftool gen skeleton xdp-proxy-v2.bpf.o > xdp-proxy-v2.skel.h
+
+# 编译用户态程序  (或者直接make)
+clang -g -O2 -Wall -I. -c xdp-proxy.c -o xdp-proxy.o
+clang -Wall -O2 -g xdp-proxy.o -static -lbpf -lelf -lz -o xdp-proxy
+
+
+# 拷贝到docker 中执行
+docker cp xdp-proxy lb:/
+docker exec -it lb /xdp-proxy
+

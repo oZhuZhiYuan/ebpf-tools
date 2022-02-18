@@ -1,4 +1,4 @@
-APPS = xdp-proxy
+APPS = xdp-proxy-v2
 bpftool = /usr/local/sbin/bpftool
 
 .PHONY: all
